@@ -39,13 +39,6 @@ p2 = data_tensor[1, :, :]
 
 #plotFreq(freq_data)
 
-input_shape = (40, 40, 8064)  # Desired input shape
-embedding_dim = 168  # Adjust the embedding dimension as needed
-hidden_size = 240  # Hidden size for the transformer
-num_layers = 4  # Number of transformer layers
-num_heads = 4  # Number of attention heads
-dropout_prob = 0.1  # Dropout probability
-num_classes = 2  # Number of output classes (1 to 10 labels)
 
 
 
