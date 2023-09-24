@@ -38,7 +38,7 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.0012)
 
 # Training loop
 num_epochs = 400  # Set the number of epochs you want
