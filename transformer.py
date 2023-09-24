@@ -3,66 +3,68 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 class TransformerLayer(nn.Module):
-    def __init__(self, embedding_dim, num_heads, ff_dim, dropout=0.1):
+    def __init__(self, embedding_dim, num_heads, ff_ratio, dropout=0.1):
         super(TransformerLayer, self).__init__()
-        
+
         # Multi-head self-attention
         self.self_attn = nn.MultiheadAttention(embedding_dim, num_heads, dropout=dropout)
-        
+
         # Feedforward neural network
+        ff_dim = int(embedding_dim * ff_ratio)
         self.feed_forward = nn.Sequential(
             nn.Linear(embedding_dim, ff_dim),
             nn.ReLU(),
             nn.Linear(ff_dim, embedding_dim)
         )
-        
+
         # Layer normalization for the residual connection
         self.norm1 = nn.LayerNorm(embedding_dim)
         self.norm2 = nn.LayerNorm(embedding_dim)
-        
+
         # Dropout
         self.dropout = nn.Dropout(dropout)
-    
+
     def forward(self, x):
         # Multi-head self-attention
         attn_output, _ = self.self_attn(x, x, x)
-        
+
         # Residual connection and layer normalization
         x = self.norm1(x + attn_output)
-        
+
         # Feedforward neural network
         ff_output = self.feed_forward(x)
-        
+
         # Residual connection and layer normalization
         x = self.norm2(x + ff_output)
-        
+
         # Apply dropout
         x = self.dropout(x)
-        
+
         return x
-    
 
 class Transformer(nn.Module):
-    def __init__(self, num_layers, embedding_dim, num_heads, ff_dim, num_classes, dropout=0.1):
+    def __init__(self, num_layers, embedding_dim_list, num_heads_list, ff_ratio_list, num_classes, dropout=0.1):
         super(Transformer, self).__init__()
-        self.embedding_dim = embedding_dim
         self.num_layers = num_layers
-        self.transformer_layers = nn.ModuleList(
-            [TransformerLayer(embedding_dim, num_heads, ff_dim, dropout) for _ in range(num_layers)]
-        )
-        self.fc = nn.Linear(embedding_dim, num_classes)
+        self.transformer_layers = nn.ModuleList()
+
+        for i in range(num_layers):
+            layer = TransformerLayer(embedding_dim_list[i], num_heads_list[i], ff_ratio_list[i], dropout)
+            self.transformer_layers.append(layer)
+
+        self.fc = nn.Linear(embedding_dim_list[-1], num_classes)
 
     def forward(self, x):
         for layer in self.transformer_layers:
             x = layer(x)
-        # Global average pooling
-        #x = x.mean(dim=1)
+
         x = x.view(x.size(0), -1)
 
         x = self.fc(x)
         x = torch.sigmoid(x)
         x = x.squeeze()
         return x
+
 
 def createTransformerPatches(data, patch_size = (60, 4096)):
     # data should be a tensor
