@@ -38,12 +38,12 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0012)
+optimizer = optim.Adam(model.parameters(), lr=0.0002)
 
 # Training loop
-num_epochs = 400  # Set the number of epochs you want
+num_epochs = 100  # Set the number of epochs you want
 
-embeddedPatches, labels = dataPipeline(subjects[0])
+embeddedPatches, labels = dataPipeline(subjects[1])
 labels = labels.to(torch.float)
 
 # Shuffle and split data to train and test
@@ -55,16 +55,17 @@ for epoch in range(num_epochs):
     # Set the model to training mode
     model.train()
     
+    embeddedPatchesEpoch, labelsEpoch = shuffleTrain(embeddedPatchesTrain, labelsTrain, subset_size=20)
     
-    outputs = model(embeddedPatchesTrain)  
+    outputs = model(embeddedPatchesEpoch)  
     outputs = outputs.to(torch.float)  # Ensure the output is in float format
     
-    print(outputs-labelsTrain)
+    print(outputs-labelsEpoch)
     #print(outputsTotal-labelsTotal)
     
     
     # Compute loss
-    loss = criterion(outputs, labelsTrain)  # Assuming labels is your 40x2 labels
+    loss = criterion(outputs, labelsEpoch)  # Assuming labels is your 40x2 labels
 
     # Zero the gradients, perform a backward pass, and update the weights
     optimizer.zero_grad()
@@ -97,4 +98,4 @@ print("Arousal Accuracy:", arousal_accuracy)
 
 
 # Save the model
-torch.save(model.state_dict(), 'model_s1_arousal.pth')
+torch.save(model.state_dict(), 'model_s2_arousal.pth')

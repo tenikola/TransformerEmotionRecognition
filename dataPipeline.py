@@ -74,6 +74,27 @@ def splitData(embeddedPatches, labels):
 
     return embeddedPatchesTrain, labelsTrain, embeddedPatchesTest, labelsTest
 
+
+def shuffleTrain(data, labels, subset_size=10):
+    # Ensure data and labels have the same number of samples
+    assert len(data) == len(labels), "Data and labels must have the same length"
+
+    # Combine data and labels
+    combined = list(zip(data, labels))
+
+    # Shuffle the combined data and labels
+    np.random.shuffle(combined)
+
+    # Unzip the shuffled data and labels
+    shuffled_data, shuffled_labels = zip(*combined)
+
+    # Convert to tensors
+    shuffled_data = torch.stack(shuffled_data[:subset_size])
+    shuffled_labels = torch.stack(shuffled_labels[:subset_size])
+
+    return shuffled_data, shuffled_labels
+
+
 def loadData():
     subjects = [dict() for i in range(32)]
     # Import s01.dat from DEAP
