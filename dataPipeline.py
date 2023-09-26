@@ -11,6 +11,27 @@ from sklearn.utils import shuffle
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 
+
+def ConcatSubjectsToTensor(subjects):
+    Patches = torch.empty(0)  # Initialize as an empty tensor
+    labels = torch.empty(0)  # Initialize as an empty tensor
+
+    for i in range(32):
+        tempPatch, tempLabel = dataPipeline(subjects[i], label_type="arousal")
+        print(tempPatch.shape)
+        tempLabel = tempLabel.to(torch.float)
+
+        # Append the tensors to embeddedPatches and labels
+        Patches = torch.cat((Patches, tempPatch), dim=0)
+        labels = torch.cat((labels, tempLabel), dim=0)
+        print(i)
+
+
+    print(Patches.shape)
+    print(labels.shape)
+    return Patches, labels
+
+
 def dataPipeline(x, label_type = "arousal"):
 
     # Split to data and labels
@@ -39,9 +60,6 @@ def dataPipeline(x, label_type = "arousal"):
     flattened_patches = flattenPatches(patches)
     #print(flattened_patches.shape)
 
-    embeddedPatches = embeddingLayer(flattened_patches)
-    #print(embeddedPatches.shape)
-
     if label_type == "arousal":
         labels = labels[:, 0]
     elif label_type == "valence":
@@ -49,10 +67,10 @@ def dataPipeline(x, label_type = "arousal"):
     else:
         print("Wrong label_type input")
         KeyError
-    return embeddedPatches, labels
+    return flattened_patches, labels
 
 
-def splitData(embeddedPatches, labels):
+def splitData(embeddedPatches, labels, trainP = 0.7, valP = 0.2, testP = 0.1):
 
     # Combine embeddings and labels
     combined_data = torch.cat((embeddedPatches, labels.unsqueeze(1)), dim=1)
@@ -65,14 +83,24 @@ def splitData(embeddedPatches, labels):
     shuffled_embeddings = shuffled_data[:, :-1]  # Exclude the last column (labels)
     shuffled_labels = shuffled_data[:, -1]  # Only the last column (labels)
 
+    num_of_train = int(embeddedPatches.shape[0] * trainP)
+    num_of_val = int(embeddedPatches.shape[0]*valP)
+    num_of_test = embeddedPatches.shape[0]-num_of_train-num_of_val
+
+    index1 = num_of_train
+    index2 = num_of_train + num_of_val
+
     # Split the shuffled data and labels into training and testing sets
-    embeddedPatchesTrain = shuffled_embeddings[:30]  # First 30 rows for training data
-    labelsTrain = shuffled_labels[:30]  # First 30 labels for training
+    embeddedPatchesTrain = shuffled_embeddings[:index1]  # First 30 rows for training data
+    labelsTrain = shuffled_labels[:index1]  # First 30 labels for training
 
-    embeddedPatchesTest = shuffled_embeddings[30:]  # Last 10 rows for testing data
-    labelsTest = shuffled_labels[30:]  # Last 10 labels for testing
+    embeddedPatchesVal = shuffled_embeddings[index1:index2]  # First 30 rows for training data
+    labelsVal = shuffled_labels[index1:index2]  # First 30 labels for training
 
-    return embeddedPatchesTrain, labelsTrain, embeddedPatchesTest, labelsTest
+    embeddedPatchesTest = shuffled_embeddings[index2:]  # Last 10 rows for testing data
+    labelsTest = shuffled_labels[index2:]  # Last 10 labels for testing
+
+    return embeddedPatchesTrain, labelsTrain, embeddedPatchesVal, labelsVal, embeddedPatchesTest, labelsTest
 
 
 def shuffleTrain(data, labels, subset_size=10):

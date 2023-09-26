@@ -23,7 +23,6 @@ mlp_ratio_list = [4.0, 3.5, 3.5, 4.0, 3.0, 3.5, 3.5]
 #ff_dim = mlp_ratio*embedding_dim  # Adjust as needed
 num_layers=len(embedding_dim_list)
 num_classes = 1
-input_length = 40
 
 
 # Instantiate the transformer with different configurations for each layer

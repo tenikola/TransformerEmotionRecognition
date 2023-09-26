@@ -1,6 +1,76 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import f1_score, precision_score, recall_score
+import numpy as np
+
+
+def train_model(model, train_loader, criterion, optimizer):
+    model.train()  # Set the model to training mode
+    total_loss = 0.0
+
+    for inputs, labels in train_loader:
+        # Forward pass
+        outputs = model(inputs)
+
+        # Compute loss
+        loss = criterion(outputs, labels)
+
+        # Backward pass and optimize
+        optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    return total_loss / len(train_loader)
+
+def evaluate_model(model, val_loader, criterion):
+    model.eval()  # Set the model to evaluation mode
+    total_loss = 0.0
+    all_true = []
+    all_predicted = []
+
+    with torch.no_grad():
+        for inputs, labels in val_loader:
+            # Forward pass
+            outputs = model(inputs)
+
+            # Convert probabilities to predicted class (0 or 1)
+            predicted = (outputs > 0.5).float()
+            
+            # Collect true and predicted labels
+            all_true.extend(labels.cpu().numpy())
+            all_predicted.extend(predicted.cpu().numpy())
+
+            # Compute loss
+            loss = criterion(outputs, labels)
+            total_loss += loss.item()
+
+    # Convert lists to numpy arrays
+    all_true = np.array(all_true)
+    all_predicted = np.array(all_predicted)
+
+    # Calculate F1 score, precision, and recall
+    f1 = f1_score(all_true, all_predicted, average='weighted')
+    precision = precision_score(all_true, all_predicted, average='weighted')
+    recall = recall_score(all_true, all_predicted, average='weighted')
+
+    return total_loss / len(val_loader), f1, precision, recall
+
+# Define a custom dataset class
+class CustomDataset(Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        x = self.data[idx]
+        y = self.labels[idx]
+        return x, y
 
 class TransformerLayer(nn.Module):
     def __init__(self, embedding_dim, num_heads, ff_ratio, dropout=0.1):
@@ -92,7 +162,7 @@ def flattenPatches(data):
     return flattened_patches
 
 
-def embeddingLayer(flattened_patches, embedding_dim = 168):
+def toEmbeddings(flattened_patches, embedding_dim = 168):
     # Initialize the EmbeddingLayer
     
     input_dim = 245760
