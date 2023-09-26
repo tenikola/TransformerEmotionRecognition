@@ -108,6 +108,7 @@ def embeddingLayer(flattened_patches, embedding_dim = 168):
 
 class EmbeddingLayer(nn.Module):
     def __init__(self, input_dim = 245760, embedding_dim=168):
+        #input_dim = 4096 * 60
         super(EmbeddingLayer, self).__init__()
         
         self.embedding = nn.Linear(input_dim, embedding_dim)

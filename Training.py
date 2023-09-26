@@ -38,12 +38,12 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0002)
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
 # Training loop
-num_epochs = 100  # Set the number of epochs you want
+num_epochs = 400  # Set the number of epochs you want
 
-embeddedPatches, labels = dataPipeline(subjects[1])
+embeddedPatches, labels = dataPipeline(subjects[2], label_type="valence")
 labels = labels.to(torch.float)
 
 # Shuffle and split data to train and test
@@ -53,7 +53,7 @@ embeddedPatchesTrain, labelsTrain, embeddedPatchesTest, labelsTest = splitData(e
 loss = 0
 for epoch in range(num_epochs):
     # Set the model to training mode
-    model.train()
+    model.eval()
     
     embeddedPatchesEpoch, labelsEpoch = shuffleTrain(embeddedPatchesTrain, labelsTrain, subset_size=20)
     
@@ -98,4 +98,4 @@ print("Arousal Accuracy:", arousal_accuracy)
 
 
 # Save the model
-torch.save(model.state_dict(), 'model_s2_arousal.pth')
+torch.save(model.state_dict(), 'model_s3_valence.pth')
