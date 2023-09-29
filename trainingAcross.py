@@ -14,7 +14,8 @@ subjects = loadData()
 flattenedPatches, labels = ConcatSubjectsToTensor(subjects)
 
 # Create embeddings
-embeddedPatches =toEmbeddings(flattenedPatches)
+embeddedPatches =toEmbeddings(flattenedPatches, embedding_dim=240)
+# embeddedPatches = flattenedPatches
 
 
 embeddedPatchesTrain, labelsTrain, embeddedPatchesVal, labelsVal, embeddedPatchesTest, labelsTest = splitData(embeddedPatches, labels)
@@ -30,16 +31,20 @@ val_dataset = CustomDataset(embeddedPatchesVal, labelsVal)
 test_dataset = CustomDataset(embeddedPatchesTest, labelsTest)
 
 # Create data loaders
-batch_size = 32  # Adjust batch size as needed
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+batch_size = 128  # Adjust batch size as needed
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
+print(train_loader)
 
 
-embedding_dim_list = [168, 168, 168, 168, 168, 168, 168]  # Adjust as needed
-num_heads_list = [2, 4, 2, 4, 4, 4, 4]  # Adjust as needed
-mlp_ratio_list = [4.0, 3.5, 3.5, 4.0, 3.0, 3.5, 3.5]
+# embedding_dim_list = [168, 168, 168, 168, 168, 168, 168]  # Adjust as needed
+embedding_dim_list = [240] * 7
+#num_heads_list = [2, 4, 2, 4, 4, 4, 4]  # Adjust as needed
+num_heads_list = [8] * 7
+#mlp_ratio_list = [4.0, 3.5, 3.5, 4.0, 3.0, 3.5, 3.5]
+mlp_ratio_list = [4.0] * 7
 #ff_dim = mlp_ratio*embedding_dim  # Adjust as needed
 num_layers=len(embedding_dim_list)
 num_classes = 1
@@ -56,7 +61,7 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.002)
+optimizer = optim.Adam(model.parameters(), lr=0.1, eps = 1.0)
 
 num_epochs = 10
 
@@ -80,7 +85,7 @@ for fold in range(num_folds):
     # Evaluate on validation set
     val_loss, val_f1, val_precision, val_recall = evaluate_model(model, val_loader, criterion)
     print(f"Validation Loss: {val_loss:.4f}, Validation f1: {val_f1:.2%}")
-
+    print(f"Validation precision: {val_precision:.4f}, Validation recall: {val_recall:.2%}")
     # Accumulate validation metrics for averaging later
     average_val_loss += val_loss
     average_val_f1 += val_f1
