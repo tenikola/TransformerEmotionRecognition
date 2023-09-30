@@ -61,7 +61,7 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.1, eps = 1.0)
+optimizer = optim.Adam(model.parameters(), lr=0.001, eps = 0.0001)
 
 num_epochs = 10
 
@@ -74,12 +74,14 @@ average_val_recall = 0.0
 
 # Perform 10-fold cross-validation
 num_folds = 10
-for fold in range(num_folds):
+# for fold in range(num_folds):
+for fold, (data, labels) in enumerate(train_loader):
     print(f"Fold {fold + 1}/{num_folds}")
+    train_loader_temp = CustomDataset(data, labels)
 
     # Train the model
     for epoch in range(num_epochs):
-        train_loss = train_model(model, train_loader, criterion, optimizer)
+        train_loss = train_model(model, train_loader_temp, criterion, optimizer)
         print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}")
 
     # Evaluate on validation set

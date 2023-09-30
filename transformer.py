@@ -3,6 +3,33 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score, precision_score, recall_score
 import numpy as np
+from sklearn.model_selection import KFold
+
+
+def k_fold_split(data, labels, num_folds=5):
+    kf = KFold(n_splits=num_folds, shuffle=True, random_state=43)
+    
+    fold_splits = []
+    
+    for train_idx, test_idx in kf.split(data):
+        train_data, val_data = data[train_idx], data[test_idx]
+        train_labels, val_labels = labels[train_idx], labels[test_idx]
+        fold_splits.append((train_data, val_data, train_labels, val_labels))
+    
+    return fold_splits
+
+
+
+# Define the training function
+def train(model, train_loader, optimizer):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        optimizer.zero_grad()
+        output = model(data)
+        target = target.long()
+        loss = nn.functional.nll_loss(output, target)
+        loss.backward(retain_graph=True)
+        optimizer.step()
 
 
 def train_model(model, train_loader, criterion, optimizer):
