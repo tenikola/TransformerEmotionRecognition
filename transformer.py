@@ -7,7 +7,7 @@ from sklearn.model_selection import KFold
 
 
 def k_fold_split(data, labels, num_folds=5):
-    kf = KFold(n_splits=num_folds, shuffle=True, random_state=43)
+    kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
     
     fold_splits = []
     
@@ -180,7 +180,8 @@ def flattenPatches(data):
     num_patches = data.shape[0]
     
     # Flatten each patch (60x4096) into a 1D vector
-    flattened_patches = data.view(num_patches, -1)
+    #flattened_patches = data.view(num_patches, -1)
+    flattened_patches = data.reshape(num_patches, -1)
     
     #print(flattened_patches.shape)
     # Flatten the resulting tensor into a final 1D tensor
@@ -192,6 +193,8 @@ def flattenPatches(data):
 def toEmbeddings(flattened_patches, embedding_dim = 168):
     # Initialize the EmbeddingLayer
     
+    # 245760 = 60x128x32
+    # 307200 = 60x128x40
     input_dim = 245760
     embedding_layer = EmbeddingLayer(input_dim, embedding_dim)
 
@@ -214,3 +217,11 @@ class EmbeddingLayer(nn.Module):
         # Assuming flattened_patches is a tensor of shape (batch_size, num_patches)
         embedded_patches = self.embedding(flattened_patches)
         return embedded_patches
+
+
+
+def checkpoint(model, filename):
+    torch.save(model.state_dict(), filename)
+    
+def resume(model, filename):
+    model.load_state_dict(torch.load(filename))

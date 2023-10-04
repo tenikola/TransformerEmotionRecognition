@@ -44,7 +44,7 @@ def dataPipeline(x, label_type = "arousal"):
     labels = labelsToBinary(labels)
     data = subtractBaseAvg(data)
 
-    data = reshapeInput(data)
+    data = reshapeInput(data, channels=32)
 
     data = divideToFlatten2Dpatches(data)
 
