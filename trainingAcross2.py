@@ -33,11 +33,11 @@ fold_splits = k_fold_split(embeddedPatchesTrain, labelsTrain, num_folds)
 
 ### CREATE MODEL ###
 # embedding_dim_list = [168, 168, 168, 168, 168, 168, 168]  # Adjust as needed
-embedding_dim_list = [240] * 7
+embedding_dim_list = [240] * 10
 #num_heads_list = [2, 4, 2, 4, 4, 4, 4]  # Adjust as needed
-num_heads_list = [6] * 7
+num_heads_list = [6] * 10
 #mlp_ratio_list = [4.0, 3.5, 3.5, 4.0, 3.0, 3.5, 3.5]
-mlp_ratio_list = [4.0] * 7
+mlp_ratio_list = [4.0] * 10
 #ff_dim = mlp_ratio*embedding_dim  # Adjust as needed
 num_layers=len(embedding_dim_list)
 num_classes = 1
@@ -54,7 +54,7 @@ model = Transformer(num_layers,
 # training
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.00005)
 
 # Set the number of training epochs and batch size
 num_epochs = 100
@@ -84,6 +84,7 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
             
             # Forward pass
             outputs = model(batch_data)
+            
             loss = criterion(outputs, batch_labels)
 
             train_loss_scores.append(loss)
@@ -122,7 +123,7 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
         val_loss = criterion(outputs, val_labels)
                 
         # Convert to Binary predictions
-        predicted = (torch.sigmoid(outputs) > 0.5).float()
+        predicted = (outputs> 0.5).float()
 
         # Calculate F1 score
         f1 = f1_score(val_labels, predicted)
@@ -146,12 +147,15 @@ model.eval()
 # Forward pass
 with torch.no_grad():
     outputs = model(embeddedPatchesTest)
-    predictions = (torch.sigmoid(outputs) > 0.5).float()
+    predictions = (outputs> 0.5).float()
 
 
 # Convert tensors to numpy arrays for metric calculation
 predictions = predictions.numpy()
 labelsTest = labelsTest.detach().numpy()
+print(predictions)
+print(labelsTest)
+print(predictions-labelsTest)
 
 # Calculate F1 score and accuracy
 f1 = f1_score(labelsTest, predictions)

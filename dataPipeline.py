@@ -55,10 +55,10 @@ def dataPipeline(x, label_type = "arousal"):
     #labels = labels.to(torch.float)
 
     patches = createTransformerPatches(data)
-    #print(patches.shape)
+    print(f'shape of patches: {patches.shape}')
 
     flattened_patches = flattenPatches(patches)
-    #print(flattened_patches.shape)
+    print(f'shape of flattened patches: {flattened_patches.shape}')
 
     if label_type == "arousal":
         labels = labels[:, 0]
@@ -68,6 +68,11 @@ def dataPipeline(x, label_type = "arousal"):
         print("Wrong label_type input")
         KeyError
     return flattened_patches, labels
+
+
+
+
+
 
 
 def splitData(embeddedPatches, labels, trainP = 0.7, valP = 0.2, testP = 0.1):
@@ -223,3 +228,91 @@ def loadData():
         subjects[31] = cPickle.load(f, encoding='latin1')
 
     return subjects
+
+
+
+def ConcatSubjectsToTensor2(subjects):
+    Patches = torch.empty(0)  # Initialize as an empty tensor
+    labels = torch.empty(0)  # Initialize as an empty tensor
+
+    for i in range(32):
+        tempPatch, tempLabel = dataPipeline2(subjects[i], label_type="arousal")
+        print(tempPatch.shape)
+        tempLabel = tempLabel.to(torch.float)
+
+        # Append the tensors to embeddedPatches and labels
+        Patches = torch.cat((Patches, tempPatch), dim=0)
+        labels = torch.cat((labels, tempLabel), dim=0)
+        print(i)
+
+
+    print(Patches.shape)
+    print(labels.shape)
+    return Patches, labels
+
+
+def dataPipeline2(x, label_type = "arousal"):
+
+    # Split to data and labels
+    data = x['data']
+    labels = x['labels']
+
+    # get only eeg, ignore the peripheral signals
+    data = data[:, :32, :]
+
+    labels = labelsToBinary(labels)
+    data = subtractBaseAvg(data)
+
+    data = reshapeInput2(data, channels=32)
+
+    # Convert your data and labels to PyTorch tensors
+    data = torch.tensor(data, dtype=torch.float32)
+    labels = torch.tensor(labels, dtype=torch.float32)
+
+
+    if label_type == "arousal":
+        labels = labels[:, 0]
+    elif label_type == "valence":
+        labels = labels[:, 1]
+    else:
+        print("Wrong label_type input")
+        KeyError
+    return data, labels
+
+
+def splitData2(data, labels, train_percentage = 0.875):
+    """
+    Split data and labels into training and testing sets while maintaining the correspondence between data and labels.
+
+    Parameters:
+    data (numpy.ndarray): The data tensor of shape (1280, 32, 60, 128).
+    labels (numpy.ndarray): The labels tensor of shape (1280,).
+    train_percentage (float): The percentage of data to be used for training.
+
+    Returns:
+    Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]: 
+    A tuple containing the training data, testing data, training labels, and testing labels.
+    """
+    # Ensure the data and labels have the same number of samples
+    assert data.shape[0] == labels.shape[0], "Data and labels must have the same number of samples"
+
+    # Reshape the data to match with labels
+    data_reshaped = data.reshape(data.shape[0], -1)  # Shape: (1280, 32*60*128)
+
+    # Shuffle the data and labels while maintaining the correspondence
+    indices = np.random.permutation(data_reshaped.shape[0])
+    shuffled_data = data_reshaped[indices].reshape(data.shape)  # Reshape back to original shape
+    shuffled_labels = labels[indices]
+
+    # Calculate the number of samples for training
+    num_train_samples = int(train_percentage * data_reshaped.shape[0])
+
+    # Split the shuffled data and labels into training and testing sets
+    train_data = shuffled_data[:num_train_samples]
+    test_data = shuffled_data[num_train_samples:]
+    train_labels = shuffled_labels[:num_train_samples]
+    test_labels = shuffled_labels[num_train_samples:]
+
+    return train_data, test_data, train_labels, test_labels
+
+

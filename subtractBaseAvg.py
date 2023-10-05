@@ -63,3 +63,21 @@ def divideToFlatten2Dpatches(data, p1 = 128, p2 = 1):
 
     # Now, input_sequence has the shape (2400, P1*P2*32), which is the input for the ViT
     return final_data
+
+
+
+def reshapeInput2(data, trials = 40, channels = 32, seconds = 60, Hz = 128):
+    
+    # Assuming eeg_data is your initial EEG data with shape (40, 32, 7680)
+    initial_shape = data.shape
+
+    # middle shape is splitting to seconds, to 40x32x60x128
+    middle_shape = (trials, channels, seconds, Hz)
+
+    # Check if the shapes are compatible
+    assert np.prod(initial_shape) == np.prod(middle_shape), "Shapes are incompatible"
+
+    # Reshape to the final shape
+    reshaped_data = data.reshape(middle_shape)
+    
+    return reshaped_data

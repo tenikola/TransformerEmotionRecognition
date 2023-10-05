@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score, precision_score, recall_score
 import numpy as np
 from sklearn.model_selection import KFold
-
+import torch.nn.functional as F
 
 def k_fold_split(data, labels, num_folds=5):
     kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
@@ -217,6 +217,52 @@ class EmbeddingLayer(nn.Module):
         # Assuming flattened_patches is a tensor of shape (batch_size, num_patches)
         embedded_patches = self.embedding(flattened_patches)
         return embedded_patches
+
+
+
+
+class VisionTransformer(nn.Module):
+    def __init__(self, num_patches=60, patch_embedding_size=240, num_transformer_layers=6):
+        super(VisionTransformer, self).__init__()
+        
+        # Linear transformation for each patch
+        self.patch_embedding = nn.Linear(32 * 128, patch_embedding_size)
+
+        # Transformer Encoder
+        self.transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=patch_embedding_size,
+                nhead=4,  # Number of attention heads
+            ),
+            num_layers=num_transformer_layers
+        )
+
+        # Classification head
+        self.classification_head = nn.Linear(num_patches * patch_embedding_size, 1)
+
+    def forward(self, x):
+        # Reshape the input to have patches as separate dimensions
+        x = x.view(x.size(0), -1, 32 * 128)
+        
+        # Transform each patch into embeddings
+        x = self.patch_embedding(x)
+
+        # Permute for transformer input
+        x = x.permute(1, 0, 2)  # (seq_length, batch_size, patch_embedding_size)
+
+        # Pass the embeddings through the transformer
+        x = self.transformer(x)
+
+        # Reshape and flatten the sequence of embeddings
+        x = x.permute(1, 0, 2).contiguous()  # (batch_size, seq_length, patch_embedding_size)
+        x = x.view(x.size(0), -1)
+
+        # Classification
+        #x = self.classification_head(x)
+        x = torch.sigmoid(self.classification_head(x))
+
+        return x
+    
 
 
 
