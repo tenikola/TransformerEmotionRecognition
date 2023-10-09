@@ -6,13 +6,14 @@ import torch.optim as optim
 from dataPipeline import *
 import torchmetrics
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import f1_score, accuracy_score
 
 # Load data as list of 40x32x128
 subjects = loadData()
 
 images, labels = ConcatSubjectsToTensor2(subjects)
 
-trainData, testData, trainLabels, testLabels = splitData2(images, labels)
+trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.05)
 
 print(trainData.shape)
 print(testData.shape)
@@ -26,16 +27,16 @@ model = VisionTransformer()
 # training
 num_folds = 7
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!change to train data and labels !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-fold_splits = k_fold_split(testData, testLabels, num_folds)
+fold_splits = k_fold_split(trainData, trainLabels, num_folds)
 
 # Define the loss function and optimizer
 criterion = nn.BCELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
 # Set the number of training epochs and batch size
-num_epochs = 100
+num_epochs = 20
 batch_size = 40
-early_stop_thresh = 5
+early_stop_thresh = 3
 
 
 # Lists to store F1 scores and loss_scores for each fold
@@ -117,3 +118,35 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
 average_f1 = sum(f1_scores)/len(f1_scores)
 average_val_loss = sum(val_loss_scores)/len(val_loss_scores)
 print(f'Average Validation Loss: {average_val_loss}, AverageF1 Score: {average_f1}')
+
+
+### TESTING ###
+
+# Set the model to evaluation mode
+model.eval()
+
+# Forward pass
+with torch.no_grad():
+    outputs = model(testData)
+    outputs = outputs.view(-1)
+    predictions = (outputs> 0.5).float()
+
+
+# Convert tensors to numpy arrays for metric calculation
+predictions = predictions.numpy()
+labelsTest = testLabels.detach().numpy()
+print(predictions)
+print(labelsTest)
+print(predictions-labelsTest)
+
+# Calculate F1 score and accuracy
+f1 = f1_score(labelsTest, predictions)
+accuracy = accuracy_score(labelsTest, predictions)
+
+print(f'Test F1 Score: {f1}')
+print(f'Test Accuracy: {accuracy}')
+
+
+
+#Save the model
+torch.save(model.state_dict(), 'model_across_arousal.pth')
