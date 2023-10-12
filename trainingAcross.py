@@ -7,13 +7,14 @@ from dataPipeline import *
 import torchmetrics
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score, accuracy_score
+import math
 
 # Load data as list of 40x32x128
 subjects = loadData()
 
 images, labels = ConcatSubjectsToTensor2(subjects)
 
-trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.05)
+trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.1)
 
 print(trainData.shape)
 print(testData.shape)
@@ -21,7 +22,7 @@ print(trainLabels.shape)
 print(testLabels.shape)
 
 
-model = VisionTransformer()
+#model = VisionTransformer()
 
 
 # training
@@ -29,23 +30,30 @@ num_folds = 7
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!change to train data and labels !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 fold_splits = k_fold_split(trainData, trainLabels, num_folds)
 
-# Define the loss function and optimizer
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+
 
 # Set the number of training epochs and batch size
-num_epochs = 20
+num_epochs = 100
 batch_size = 40
-early_stop_thresh = 3
+early_stop_thresh = 5
 
 
 # Lists to store F1 scores and loss_scores for each fold
 f1_scores = []
 val_loss_scores = []
+baseline_f1_scores = []
 
 # Loop through each fold in the cross-validation splits
 for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_splits):
     print(train_data.shape)
+
+    average_loss_scores = []
+
+    model = VisionTransformer()
+    # Define the loss function and optimizer
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    
     
     best_loss = 100
     best_epoch = -1
@@ -77,7 +85,8 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
             optimizer.step()
         
         average_train_epoch_loss = sum(train_loss_scores)/len(train_loss_scores)
-        
+        average_loss_scores.append(average_train_epoch_loss)
+
         print(f'Epoch {epoch+1}, Average Train Loss: {average_train_epoch_loss}, Best Loss: {best_loss}')
         
         if average_train_epoch_loss < best_loss:
@@ -90,6 +99,28 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
 
     resume(model, "best_model.pth")
 
+    # Create the plot
+    # Convert the list to a PyTorch tensor
+    average_loss_scores_tensor = torch.tensor(average_loss_scores)
+
+    # Convert the PyTorch tensor to a NumPy array
+    average_loss_scores_np = average_loss_scores_tensor.detach().numpy()
+
+    # Generate x values (assuming equally spaced data points)
+    x_values = range(len(average_loss_scores_np))
+
+    #plt.plot(x_values, average_loss_scores_np, label='Average epoch loss for this fold')
+
+    # Add labels and title
+    #plt.xlabel('Epoch')
+    #plt.ylabel('Loss')
+    #plt.title('Plotting Average Loss')
+
+    # Display a legend
+    #plt.legend()
+
+    # Show the plot
+    #plt.show()
 
     #Validation
     model.eval()  # Set the model to evaluation mode
@@ -101,6 +132,15 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
         outputs = model(val_data)
         outputs = outputs.view(-1)
         val_loss = criterion(outputs, val_labels)
+
+        # Baseline f1
+        # Generate random integers (0 or 1)
+        random_preds = np.random.randint(2, size=len(outputs))
+
+        # Convert integers to floats (0.0 or 1.0)
+        random_preds = random_preds.astype(float)
+        base_f1 = f1_score(val_labels, random_preds)
+        baseline_f1_scores.append(base_f1)
                 
         # Convert to Binary predictions
         predicted = (outputs> 0.5).float()
@@ -113,11 +153,12 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
         val_loss_scores.append(val_loss)
 
     # Print validation results for this epoch
-    print(f'Fold {fold+1}: Validation Loss: {val_loss}, F1 Score: {f1}')
+    print(f'Fold {fold+1}: Validation Loss: {val_loss}, F1 Score: {f1}, Baseline F1 Score: {base_f1}')
 
 average_f1 = sum(f1_scores)/len(f1_scores)
 average_val_loss = sum(val_loss_scores)/len(val_loss_scores)
-print(f'Average Validation Loss: {average_val_loss}, AverageF1 Score: {average_f1}')
+average_base_f1 = sum(baseline_f1_scores)/len(baseline_f1_scores)
+print(f'Average Validation Loss: {average_val_loss}, AverageF1 Score: {average_f1}, Average BaselineF1 Score: {average_base_f1}')
 
 
 ### TESTING ###
@@ -143,10 +184,20 @@ print(predictions-labelsTest)
 f1 = f1_score(labelsTest, predictions)
 accuracy = accuracy_score(labelsTest, predictions)
 
+# Baseline F1 and accuracy
+random_predictions = np.random.randint(2, size=len(predictions))
+
+# Convert integers to floats (0.0 or 1.0)
+random_preds = random_predictions.astype(float)
+base_f1 = f1_score(labelsTest, random_predictions)
+base_accuracy = accuracy_score(labelsTest, random_predictions)
+
+
 print(f'Test F1 Score: {f1}')
 print(f'Test Accuracy: {accuracy}')
 
-
+print(f'Test Base F1 Score: {base_f1}')
+print(f'Test Base Accuracy: {base_accuracy}')
 
 #Save the model
 torch.save(model.state_dict(), 'model_across_arousal.pth')
