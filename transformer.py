@@ -5,6 +5,7 @@ from sklearn.metrics import f1_score, precision_score, recall_score
 import numpy as np
 from sklearn.model_selection import KFold
 import torch.nn.functional as F
+import math
 
 def k_fold_split(data, labels, num_folds=5):
     kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
@@ -226,32 +227,45 @@ class VisionTransformer(nn.Module):
         super(VisionTransformer, self).__init__()
         
         # Linear transformation for each patch
-        self.patch_embedding = nn.Linear(32 * 128, patch_embedding_size)
+        self.patch_embedding = nn.Linear(40 * 128, patch_embedding_size)
+
+        # Positional Encoding
+        self.positional_encoding = self.positional_encoding(patch_embedding_size, num_patches)
 
         # Transformer Encoder
-        self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=patch_embedding_size,
-                nhead=4,  # Number of attention heads
-            ),
-            num_layers=num_transformer_layers
-        )
+        #self.transformer = nn.TransformerEncoder(
+         #   nn.TransformerEncoderLayer(
+          #      d_model=patch_embedding_size,
+           #     nhead=4,  # Number of attention heads
+            #),
+            #num_layers=num_transformer_layers
+        #)
+        # Define the transformer blocks
+        self.transformer_blocks = nn.ModuleList([
+            TransformerBlock(patch_embedding_size) for _ in range(num_transformer_layers)
+        ])
 
         # Classification head
         self.classification_head = nn.Linear(num_patches * patch_embedding_size, 1)
 
     def forward(self, x):
         # Reshape the input to have patches as separate dimensions
-        x = x.view(x.size(0), -1, 32 * 128)
+        x = x.view(x.size(0), -1, 40 * 128)
         
         # Transform each patch into embeddings
         x = self.patch_embedding(x)
+
+        # Add positional encodings
+        x = x + self.positional_encoding
+
+        for transformer_block in self.transformer_blocks:
+            x = transformer_block(x)
 
         # Permute for transformer input
         x = x.permute(1, 0, 2)  # (seq_length, batch_size, patch_embedding_size)
 
         # Pass the embeddings through the transformer
-        x = self.transformer(x)
+        #x = self.transformer(x)
 
         # Reshape and flatten the sequence of embeddings
         x = x.permute(1, 0, 2).contiguous()  # (batch_size, seq_length, patch_embedding_size)
@@ -264,7 +278,49 @@ class VisionTransformer(nn.Module):
         return x
     
 
+    def positional_encoding(self, d_model, n_position):
+        position_enc = torch.zeros(n_position, d_model)
+        position = torch.arange(0, n_position).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
+        position_enc[:, 0::2] = torch.sin(position.float() * div_term)
+        position_enc[:, 1::2] = torch.cos(position.float() * div_term)
+        return position_enc.unsqueeze(0)
 
+
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, embedding_dim, num_heads=4, ff_dim=256):
+        super(TransformerBlock, self).__init__()
+
+        # Multi-Head Self Attention
+        self.self_attention = nn.MultiheadAttention(embedding_dim, num_heads)
+
+        # Layer normalization and residual connection for MSA
+        self.norm1 = nn.LayerNorm(embedding_dim)
+        
+        # MLP Block
+        self.mlp = nn.Sequential(
+            nn.Linear(embedding_dim, ff_dim),
+            nn.ReLU(),
+            nn.Linear(ff_dim, embedding_dim)
+        )
+
+        # Layer normalization and residual connection for MLP
+        self.norm2 = nn.LayerNorm(embedding_dim)
+
+    def forward(self, x):
+        # Multi-Head Self Attention
+        attn_output, _ = self.self_attention(x, x, x)
+        x = x + attn_output
+        x = self.norm1(x)
+
+        # MLP Block
+        mlp_output = self.mlp(x)
+        x = x + mlp_output
+        x = self.norm2(x)
+
+        return x
 
 def checkpoint(model, filename):
     torch.save(model.state_dict(), filename)

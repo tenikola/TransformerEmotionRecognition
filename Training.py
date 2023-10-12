@@ -1,100 +1,206 @@
-import pickle as cPickle
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy import pi
-from scipy.fftpack import fft
 from subtractBaseAvg import*
 from plotTime import *
 from transformer import *
 import torch
-from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 from dataPipeline import *
 import torchmetrics
+from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import f1_score, accuracy_score
+import math
+import sys
+import matplotlib.pyplot as plt
 
-
+# Load data as list of 40x32x128
 subjects = loadData()
 
+images, labels = dataPipeline2(subjects[0])
 
-# Example usage
-embedding_dim_list = [168, 168, 168, 168, 168, 168, 168]  # Adjust as needed
-num_heads_list = [2, 4, 2, 4, 4, 4, 4]  # Adjust as needed
-mlp_ratio_list = [4.0, 3.5, 3.5, 4.0, 3.0, 3.5, 3.5]
-#ff_dim = mlp_ratio*embedding_dim  # Adjust as needed
-num_layers=len(embedding_dim_list)
-num_classes = 1
+trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.975)
 
 
-# Instantiate the transformer with different configurations for each layer
-model = Transformer(num_layers, 
-                          embedding_dim_list=embedding_dim_list, 
-                          num_heads_list=num_heads_list, 
-                          ff_ratio_list=mlp_ratio_list, 
-                          num_classes=num_classes)  # Adjust num_classes as needed
+print(trainData.shape)
+print(testData.shape)
+print(trainLabels.shape)
+print(testLabels.shape)
 
+
+model = VisionTransformer()
 
 
 # training
-# Define the loss function and optimizer
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
-
-# Training loop
-num_epochs = 400  # Set the number of epochs you want
-
-embeddedPatches, labels = dataPipeline(subjects[2], label_type="valence")
-labels = labels.to(torch.float)
-
-# Shuffle and split data to train and test
-embeddedPatchesTrain, labelsTrain, embeddedPatchesTest, labelsTest = splitData(embeddedPatches, labels)
+num_folds = 8
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!change to train data and labels !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+fold_splits = k_fold_split(trainData, trainLabels, num_folds)
 
 
-loss = 0
-for epoch in range(num_epochs):
-    # Set the model to training mode
-    model.eval()
+
+# Set the number of training epochs and batch size
+num_epochs = 100
+batch_size = 7
+early_stop_thresh = 10
+
+
+# Lists to store F1 scores and loss_scores for each fold
+f1_scores = []
+val_loss_scores = []
+baseline_f1_scores = []
+
+# Loop through each fold in the cross-validation splits
+for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_splits):
+    print(train_data.shape)
+
+    average_loss_scores = []
+
+    model = VisionTransformer()
+    # Define the loss function and optimizer
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.00001)
     
-    embeddedPatchesEpoch, labelsEpoch = shuffleTrain(embeddedPatchesTrain, labelsTrain, subset_size=20)
     
-    outputs = model(embeddedPatchesEpoch)  
-    outputs = outputs.to(torch.float)  # Ensure the output is in float format
-    
-    print(outputs-labelsEpoch)
-    #print(outputsTotal-labelsTotal)
-    
-    
-    # Compute loss
-    loss = criterion(outputs, labelsEpoch)  # Assuming labels is your 40x2 labels
+    best_loss = 100
+    best_epoch = -1
+    # Loop through each epoch for training
+    for epoch in range(num_epochs):
+        model.train()  # Set the model to training mode
+        print(f'Fold: {fold+1}, Epoch: {epoch+1}')
 
-    # Zero the gradients, perform a backward pass, and update the weights
-    optimizer.zero_grad()
-    loss.backward(retain_graph=True)
-    optimizer.step()
+        train_loss_scores = []
+        # Training loop
+        for i in range(0, len(train_data), batch_size):
+            # Get a batch of data and labels
+            batch_data, batch_labels = train_data[i:i+batch_size], train_labels[i:i+batch_size]
+            
+            # Forward pass
+            outputs = model(batch_data)
+            outputs = outputs.view(-1)
+            
+            loss = criterion(outputs, batch_labels)
 
-    # Print the loss for this epoch
-    print(f"Epoch [{epoch + 1}/{num_epochs}] - Loss: {loss.item()}")
+            train_loss_scores.append(loss)
 
-    #arousal_accuracy = torchmetrics.functional.classification.accuracy(outputs, labels, task = 'binary', threshold=0.5)
+            batch_num = int(i/batch_size)
+            print(f'Fold {fold+1}, Epoch {epoch+1}, Batch {batch_num+1}: Training Loss: {loss}')
+            
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+            optimizer.step()
+        
+        average_train_epoch_loss = sum(train_loss_scores)/len(train_loss_scores)
+        average_loss_scores.append(average_train_epoch_loss)
 
-    #print("Arousal Accuracy:", arousal_accuracy)
+        print(f'Epoch {epoch+1}, Average Train Loss: {average_train_epoch_loss}, Best Loss: {best_loss}')
+        
+        if average_train_epoch_loss < best_loss:
+            best_loss = average_train_epoch_loss
+            best_epoch = epoch
+            checkpoint(model, "best_model.pth")
+        elif epoch - best_epoch > early_stop_thresh:
+            print(f"Early stopped training at epoch {epoch+1}")
+            break  # terminate the training loop
+
+    resume(model, "best_model.pth")
+
+    # Create the plot
+    # Convert the list to a PyTorch tensor
+    average_loss_scores_tensor = torch.tensor(average_loss_scores)
+
+    # Convert the PyTorch tensor to a NumPy array
+    average_loss_scores_np = average_loss_scores_tensor.detach().numpy()
+
+    # Generate x values (assuming equally spaced data points)
+    x_values = range(len(average_loss_scores_np))
+
+    #plt.plot(x_values, average_loss_scores_np, label='Average epoch loss for this fold')
+
+    # Add labels and title
+    #plt.xlabel('Epoch')
+    #plt.ylabel('Loss')
+    #plt.title('Plotting Average Loss')
+
+    # Display a legend
+    #plt.legend()
+
+    # Show the plot
+    #plt.show()
+
+    #Validation
+    model.eval()  # Set the model to evaluation mode
+    val_loss = 0.0
+    y_true = []
+    y_pred = []
+    with torch.no_grad():     
+        # Forward pass
+        outputs = model(val_data)
+        outputs = outputs.view(-1)
+        val_loss = criterion(outputs, val_labels)
+
+        # Baseline f1
+        # Generate random integers (0 or 1)
+        random_preds = np.random.randint(2, size=len(outputs))
+
+        # Convert integers to floats (0.0 or 1.0)
+        random_preds = random_preds.astype(float)
+        base_f1 = f1_score(val_labels, random_preds)
+        baseline_f1_scores.append(base_f1)
+                
+        # Convert to Binary predictions
+        predicted = (outputs> 0.5).float()
+
+        # Calculate F1 score
+        f1 = f1_score(val_labels, predicted)
+
+        #append scores to list, so we can calculate average
+        f1_scores.append(f1)
+        val_loss_scores.append(val_loss)
+
+    # Print validation results for this epoch
+    print(f'Fold {fold+1}: Validation Loss: {val_loss}, F1 Score: {f1}, Baseline F1 Score: {base_f1}')
+
+average_f1 = sum(f1_scores)/len(f1_scores)
+average_val_loss = sum(val_loss_scores)/len(val_loss_scores)
+average_base_f1 = sum(baseline_f1_scores)/len(baseline_f1_scores)
+print(f'Average Validation Loss: {average_val_loss}, AverageF1 Score: {average_f1}, Average BaselineF1 Score: {average_base_f1}')
 
 
-# Set the model to evaluation mode (important for models with layers like dropout)
+### TESTING ###
+
+# Set the model to evaluation mode
 model.eval()
 
-# Pass the validation dataset through the model
+# Forward pass
 with torch.no_grad():
-    predictions = model(embeddedPatchesTest)
+    outputs = model(testData)
+    outputs = outputs.view(-1)
+    predictions = (outputs> 0.5).float()
 
 
+# Convert tensors to numpy arrays for metric calculation
+predictions = predictions.numpy()
+labelsTest = testLabels.detach().numpy()
 print(predictions)
 print(labelsTest)
+print(predictions-labelsTest)
 
-# Assuming val_predictions is a tensor of predictions, compute accuracy as an example
-arousal_accuracy = torchmetrics.functional.classification.accuracy(predictions, labelsTest, task = 'binary', threshold=0.5)
+# Calculate F1 score and accuracy
+f1 = f1_score(labelsTest, predictions)
+accuracy = accuracy_score(labelsTest, predictions)
 
-print("Arousal Accuracy:", arousal_accuracy)
+# Baseline F1 and accuracy
+random_predictions = np.random.randint(2, size=len(predictions))
+
+# Convert integers to floats (0.0 or 1.0)
+random_preds = random_predictions.astype(float)
+base_f1 = f1_score(labelsTest, random_predictions)
+base_accuracy = accuracy_score(labelsTest, random_predictions)
 
 
-# Save the model
-torch.save(model.state_dict(), 'model_s3_valence.pth')
+print(f'Test F1 Score: {f1}')
+print(f'Test Accuracy: {accuracy}')
+
+print(f'Test Base F1 Score: {base_f1}')
+print(f'Test Base Accuracy: {base_accuracy}')
+
+#Save the model
+torch.save(model.state_dict(), 'model_s1_arousal.pth')

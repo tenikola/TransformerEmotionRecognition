@@ -258,12 +258,12 @@ def dataPipeline2(x, label_type = "arousal"):
     labels = x['labels']
 
     # get only eeg, ignore the peripheral signals
-    data = data[:, :32, :]
+    #data = data[:, :32, :]
 
     labels = labelsToBinary(labels)
     data = subtractBaseAvg(data)
 
-    data = reshapeInput2(data, channels=32)
+    data = reshapeInput2(data, channels=40)
 
     # Convert your data and labels to PyTorch tensors
     data = torch.tensor(data, dtype=torch.float32)
@@ -316,3 +316,124 @@ def splitData2(data, labels, train_percentage = 0.875):
     return train_data, test_data, train_labels, test_labels
 
 
+
+
+def ConcatSubjectsToTensor3(subjects):
+    Patches = torch.empty(0)  # Initialize as an empty tensor
+    labels = torch.empty(0)  # Initialize as an empty tensor
+
+    tempPatch, tempLabel = dataPipeline2(subjects, label_type="arousal")
+    print(tempPatch.shape)
+    tempLabel = tempLabel.to(torch.float)
+
+    # Append the tensors to embeddedPatches and labels
+    Patches = tempPatch
+    labels = tempLabel
+
+
+    print(Patches.shape)
+    print(labels.shape)
+    return Patches, labels
+
+
+
+def loadDataDrive():
+    subjects = [dict() for i in range(32)]
+    # Import s01.dat from DEAP
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s01.dat", 'rb') as f:
+        subjects[0] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s02.dat", 'rb') as f:
+        subjects[1] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s03.dat", 'rb') as f:
+        subjects[2] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s04.dat", 'rb') as f:
+        subjects[3] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s05.dat", 'rb') as f:
+        subjects[4] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s06.dat", 'rb') as f:
+        subjects[5] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s07.dat", 'rb') as f:
+        subjects[6] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s08.dat", 'rb') as f:
+        subjects[7] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s09.dat", 'rb') as f:
+        subjects[8] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s10.dat", 'rb') as f:
+        subjects[9] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s11.dat", 'rb') as f:
+        subjects[10] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s12.dat", 'rb') as f:
+        subjects[11] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s13.dat", 'rb') as f:
+        subjects[12] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s14.dat", 'rb') as f:
+        subjects[13] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s15.dat", 'rb') as f:
+        subjects[14] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s16.dat", 'rb') as f:
+        subjects[15] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s17.dat", 'rb') as f:
+        subjects[16] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s18.dat", 'rb') as f:
+        subjects[17] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s19.dat", 'rb') as f:
+        subjects[18] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s20.dat", 'rb') as f:
+        subjects[19] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s21.dat", 'rb') as f:
+        subjects[20] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s22.dat", 'rb') as f:
+        subjects[21] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s23.dat", 'rb') as f:
+        subjects[22] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s24.dat", 'rb') as f:
+        subjects[23] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s25.dat", 'rb') as f:
+        subjects[24] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s26.dat", 'rb') as f:
+        subjects[25] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s27.dat", 'rb') as f:
+        subjects[26] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s28.dat", 'rb') as f:
+        subjects[27] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s29.dat", 'rb') as f:
+        subjects[28] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s30.dat", 'rb') as f:
+        subjects[29] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s31.dat", 'rb') as f:
+        subjects[30] = cPickle.load(f, encoding='latin1')
+
+    with open(r"/content/drive/MyDrive/data_preprocessed_python/s32.dat", 'rb') as f:
+        subjects[31] = cPickle.load(f, encoding='latin1')
+
+    return subjects
