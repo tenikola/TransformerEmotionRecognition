@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 # Load data as list of 40x32x128
 subjects = loadData()
 
-images, labels = dataPipeline2(subjects[1])
+images, labels = dataPipeline2(subjects[9])
 
-trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.975)
+trainData, testData, trainLabels, testLabels = splitData2(images, labels, 1.0)
 
 
 print(trainData.shape)
@@ -29,19 +29,21 @@ print(testLabels.shape)
 
 
 # training
-num_folds = 8
+num_folds = 7
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!change to train data and labels !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 fold_splits = k_fold_split(trainData, trainLabels, num_folds)
 
 
 
 # Set the number of training epochs and batch size
-num_epochs = 30
-batch_size = 8
+# Set the number of training epochs and batch size
+num_epochs = 20
+batch_size = 5
 early_stop_thresh = 5
 
 
 # Lists to store F1 scores and loss_scores for each fold
+accuracy_scores = []
 f1_scores = []
 val_loss_scores = []
 baseline_f1_scores = []
@@ -56,7 +58,7 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
     model = VisionTransformer()
     # Define the loss function and optimizer
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0003)
+    optimizer = optim.Adam(model.parameters(), lr=0.0002)
     
     
     best_loss = 100
@@ -75,6 +77,7 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
             # Forward pass
             outputs = model(batch_data)
             outputs = outputs.view(-1)
+            batch_labels = batch_labels.view(-1)
             #outputs = (outputs> 0.5).float()
             
             loss = criterion(outputs, batch_labels)
@@ -130,12 +133,11 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
     #Validation
     model.eval()  # Set the model to evaluation mode
     val_loss = 0.0
-    y_true = []
-    y_pred = []
     with torch.no_grad():     
         # Forward pass
         outputs = model(val_data)
         outputs = outputs.view(-1)
+        val_labels = val_labels.view(-1)
         val_loss = criterion(outputs, val_labels)
 
         # Baseline f1
@@ -146,24 +148,33 @@ for fold, (train_data, val_data, train_labels, val_labels) in enumerate(fold_spl
         random_preds = random_preds.astype(float)
         base_f1 = f1_score(val_labels, random_preds)
         baseline_f1_scores.append(base_f1)
-                
+        
+        print(val_labels)
+        print(outputs)
+
         # Convert to Binary predictions
         predicted = (outputs> 0.5).float()
+        print(val_labels)
+        print(predicted)
 
         # Calculate F1 score
         f1 = f1_score(val_labels, predicted)
+        accuracy = accuracy_score(val_labels, predicted)
 
         #append scores to list, so we can calculate average
         f1_scores.append(f1)
         val_loss_scores.append(val_loss)
+        accuracy_scores.append(accuracy)
 
     # Print validation results for this epoch
-    print(f'Fold {fold+1}: Validation Loss: {val_loss}, F1 Score: {f1}, Baseline F1 Score: {base_f1}')
+    print(f'Fold {fold+1}: Validation Loss: {val_loss}, Accuracy: {accuracy}, F1 Score: {f1}, Baseline F1 Score: {base_f1}')
 
 average_f1 = sum(f1_scores)/len(f1_scores)
 average_val_loss = sum(val_loss_scores)/len(val_loss_scores)
 average_base_f1 = sum(baseline_f1_scores)/len(baseline_f1_scores)
-print(f'Average Validation Loss: {average_val_loss}, AverageF1 Score: {average_f1}, Average BaselineF1 Score: {average_base_f1}')
+average_accuracy = sum(accuracy_scores)/len(accuracy_scores)
+print(f'Average Validation Loss: {average_val_loss}, AverageAccuracy Score: {average_accuracy}, AverageF1 Score: {average_f1}, Average BaselineF1 Score: {average_base_f1}')
+
 
 
 ### TESTING ###

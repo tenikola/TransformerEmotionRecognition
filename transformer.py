@@ -223,11 +223,11 @@ class EmbeddingLayer(nn.Module):
 
 
 class VisionTransformer(nn.Module):
-    def __init__(self, num_patches=60, patch_embedding_size=240, num_transformer_layers=6):
+    def __init__(self, num_patches=192, patch_embedding_size=168, num_transformer_layers=6):
         super(VisionTransformer, self).__init__()
         
         # Linear transformation for each patch
-        self.patch_embedding = nn.Linear(32 * 128, patch_embedding_size)
+        self.patch_embedding = nn.Linear(10 * 128, patch_embedding_size)
 
         # Positional Encoding
         self.positional_encoding = self.positional_encoding(patch_embedding_size, num_patches)
@@ -250,7 +250,7 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x):
         # Reshape the input to have patches as separate dimensions
-        x = x.view(x.size(0), -1, 32 * 128)
+        x = x.view(x.size(0), -1, 10 * 128)
         
         # Transform each patch into embeddings
         x = self.patch_embedding(x)

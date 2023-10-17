@@ -71,13 +71,16 @@ def reshapeInput2(data, trials = 40, channels = 32, seconds = 60, Hz = 128):
     # Assuming eeg_data is your initial EEG data with shape (40, 32, 7680)
     initial_shape = data.shape
 
-    # middle shape is splitting to seconds, to 40x32x60x128
-    middle_shape = (trials, channels, seconds, Hz)
-
-    # Check if the shapes are compatible
-    assert np.prod(initial_shape) == np.prod(middle_shape), "Shapes are incompatible"
-
-    # Reshape to the final shape
-    reshaped_data = data.reshape(middle_shape)
     
-    return reshaped_data
+    # Split the last dimension into chunks of 128
+    chunk_size = 128
+    num_chunks = initial_shape[-1] // chunk_size
+
+    # Reshape the array to split the last dimension into chunks of 128
+    reshaped_array = data.reshape(initial_shape[:-1] + (num_chunks, chunk_size))
+
+    # Create a new array with the desired shape (40, 32, 128, 60)
+    desired_shape = initial_shape[:-1] + (chunk_size, num_chunks)
+    result_array = reshaped_array.reshape(desired_shape)
+    
+    return result_array
