@@ -258,12 +258,12 @@ def dataPipeline2(x, label_type = "arousal"):
     labels = x['labels']
 
     # get only eeg, ignore the peripheral signals
-    data = data[:, :32, :]
+    #data = data[:, :32, :]
 
     labels = labelsToBinary(labels)
     data = subtractBaseAvg(data)
 
-    data = reshapeInput2(data, channels=32)
+    data = reshapeInput2(data, channels=40)
 
     # Convert your data and labels to PyTorch tensors
     data = torch.tensor(data, dtype=torch.float32)

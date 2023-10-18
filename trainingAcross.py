@@ -14,7 +14,7 @@ subjects = loadData()
 
 images, labels = ConcatSubjectsToTensor2(subjects)
 
-trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.1)
+trainData, testData, trainLabels, testLabels = splitData2(images, labels, 0.05)
 
 print(trainData.shape)
 print(testData.shape)
