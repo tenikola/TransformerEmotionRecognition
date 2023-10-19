@@ -6,6 +6,45 @@ from tensorflow.keras.layers import Add, Dense, Dropout, Embedding, GlobalAverag
 from dataPipeline import *
 from subtractBaseAvg import *
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+from tensorflow import keras
+from tensorflow.keras import layers
+
+
+def create_model(learning_rate=0.001, num_heads=4, num_blocks=6, projection_dim=240, batch_size=6):
+    model = create_VisionTransformer(1, num_heads=num_heads, num_blocks=num_blocks, projection_dim=projection_dim)  # Your model creation function
+    model.compile(
+        loss=tf.keras.losses.binary_crossentropy,
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), 
+        metrics=['accuracy', tf.keras.metrics.F1Score(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
+    )
+    
+    model.summary()
+    return model
+
+
+def dataSubjectPipeline(subject):
+    # Split to data and labels
+    data = subject['data']
+    labels = subject['labels']
+
+    # get only eeg, ignore the peripheral signals
+    data = data[:, :32, :]
+
+    labels = labelsToBinary(labels)
+    labels = labels[:, 0]
+    data = subtractBaseAvg(data)
+    data = reshapeInput2(data)
+
+    numpy_data = np.array(data)
+    numpy_labels = np.array(labels)
+
+    data_tensor = tf.constant(numpy_data, dtype=tf.float32)
+    data_tensor = tf.transpose(data_tensor, [0, 2, 3, 1])
+    labels_tensor = tf.constant(numpy_labels, dtype=tf.float32)
+
+    return data_tensor, labels_tensor
+
 
 
 def split_data(data, labels, test_size=0.2, random_state=42):
@@ -45,8 +84,8 @@ class PatchExtractor(Layer):
         batch_size = tf.shape(images)[0]
         patches = tf.image.extract_patches(
             images=images,
-            sizes=[1, 64, 1, 1],
-            strides=[1, 64, 1, 1],
+            sizes=[1, 128, 1, 1],
+            strides=[1, 128, 1, 1],
             rates=[1, 1, 1, 1],
             padding="VALID",
         )
@@ -55,21 +94,33 @@ class PatchExtractor(Layer):
         return patches
     
 class PatchEncoder(Layer):
-    def __init__(self, num_patches=120, projection_dim=2048):
+    def __init__(self, num_patches=60, projection_dim=4096, linear_projection_dim=240):
         super(PatchEncoder, self).__init__()
         self.num_patches = num_patches
-        self.projection_dim = projection_dim
+        #self.projection_dim = projection_dim
+
+        self.linear_projection_dim = linear_projection_dim  # Added linear_projection_dim
+
         w_init = tf.random_normal_initializer()
-        class_token = w_init(shape=(1, projection_dim), dtype="float32")
+
+        #class_token = w_init(shape=(1, projection_dim), dtype="float32")
+        class_token = w_init(shape=(1, self.linear_projection_dim), dtype="float32")  # Changed projection_dim to linear_projection_dim
+
         self.class_token = tf.Variable(initial_value=class_token, trainable=True)
-        self.projection = Dense(units=projection_dim)
-        self.position_embedding = Embedding(input_dim=num_patches+1, output_dim=projection_dim)
+
+        #self.projection = Dense(units=projection_dim)
+        #self.position_embedding = Embedding(input_dim=num_patches+1, output_dim=projection_dim)
+        self.projection = Dense(units=self.linear_projection_dim)  # Changed projection_dim to linear_projection_dim
+        self.position_embedding = Embedding(input_dim=num_patches + 1, output_dim=self.linear_projection_dim)  # Changed projection_dim to linear_projection_dim
 
     def call(self, patch):
         batch = tf.shape(patch)[0]
         # reshape the class token embedins
         class_token = tf.tile(self.class_token, multiples = [batch, 1])
-        class_token = tf.reshape(class_token, (batch, 1, self.projection_dim))
+
+        #class_token = tf.reshape(class_token, (batch, 1, self.projection_dim))
+        class_token = tf.reshape(class_token, (batch, 1, self.linear_projection_dim))  # Changed projection_dim to linear_projection_dim
+
         # calculate patches embeddings
         patches_embed = self.projection(patch)
         patches_embed = tf.concat([patches_embed, class_token], 1)
@@ -104,8 +155,8 @@ class Block(Layer):
         self.norm1 = LayerNormalization(epsilon=1e-6)
         self.attn = MultiHeadAttention(num_heads=num_heads, key_dim=projection_dim, dropout=dropout_rate)
         self.norm2 = LayerNormalization(epsilon=1e-6)
-        #self.mlp = MLP(projection_dim * 2, projection_dim, dropout_rate)
-        self.mlp = MLP(512, projection_dim, dropout_rate)
+        self.mlp = MLP(projection_dim * 2, projection_dim, dropout_rate)
+        #self.mlp = MLP(512, projection_dim, dropout_rate)
 
     def call(self, x):
         # Layer normalization 1.
@@ -123,7 +174,7 @@ class Block(Layer):
         return y
     
 class TransformerEncoder(Layer):
-    def __init__(self, projection_dim, num_heads=4, num_blocks=6, dropout_rate=0.1):
+    def __init__(self, projection_dim, num_heads=4, num_blocks=12, dropout_rate=0.1):
         super(TransformerEncoder, self).__init__()
         self.blocks = [Block(projection_dim, num_heads, dropout_rate) for _ in range(num_blocks)]
         self.norm = LayerNormalization(epsilon=1e-6)
@@ -137,14 +188,14 @@ class TransformerEncoder(Layer):
         y = self.dropout(x)
         return y
     
-def create_VisionTransformer(num_classes, num_patches=120, projection_dim=2048, input_shape=(128, 60, 32)):
+def create_VisionTransformer(num_classes, num_heads=4, num_blocks=12, num_patches=60, projection_dim=240, input_shape=(128, 60, 32)):
     inputs = Input(shape=input_shape)
     # Patch extractor
     patches = PatchExtractor()(inputs)
     # Patch encoder
-    patches_embed = PatchEncoder(num_patches, projection_dim)(patches)
+    patches_embed = PatchEncoder(num_patches, linear_projection_dim=projection_dim)(patches)
     # Transformer encoder
-    representation = TransformerEncoder(projection_dim)(patches_embed)
+    representation = TransformerEncoder(projection_dim = projection_dim, num_heads=num_heads, num_blocks=num_blocks)(patches_embed)
     representation = GlobalAveragePooling1D()(representation)
     # MLP to classify outputs
     logits = MLP(projection_dim, num_classes, 0.5)(representation)

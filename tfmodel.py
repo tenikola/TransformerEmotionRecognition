@@ -3,35 +3,20 @@ from subtractBaseAvg import *
 import numpy as np
 import tensorflow as tf
 from VisionTransformer import *
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from sklearn.model_selection import GridSearchCV
+from scikeras.wrappers import KerasClassifier
+from sklearn.model_selection import ParameterGrid, KFold
+from sklearn.model_selection import GridSearchCV, KFold
+from sklearn.metrics import accuracy_score
+from tensorflow.keras.models import load_model, save_model
 
 
 
 subjects = loadData()
 
 subject = subjects[0]
-# Split to data and labels
-data = subject['data']
-labels = subject['labels']
-
-# get only eeg, ignore the peripheral signals
-data = data[:, :32, :]
-
-labels = labelsToBinary(labels)
-labels = labels[:, 0]
-data = subtractBaseAvg(data)
-data = reshapeInput2(data)
-
-print(labels.shape)
-print(data.shape)
-
-numpy_data = np.array(data)
-numpy_labels = np.array(labels)
-
-
-data_tensor = tf.constant(numpy_data, dtype=tf.float32)
-data_tensor = tf.transpose(data_tensor, [0, 2, 3, 1])
-labels_tensor = tf.constant(numpy_labels, dtype=tf.float32)
-
+data_tensor, labels_tensor = dataSubjectPipeline(subject)
 
 print(labels_tensor.shape)
 print(data_tensor.shape)
@@ -40,23 +25,64 @@ X_train, X_test, y_train, y_test = split_data(data_tensor, labels_tensor, test_s
 print(X_train.shape)
 print(X_test.shape)
 
+param_grid = {
+    'learning_rate': [0.01, 0.001, 0.0001],
+    'num_heads': [2, 4, 6],
+    'num_blocks': [6, 12],
+    'projection_dim': [128, 240],
+    'batch_size': [3, 6, 10]
+}
+#param_grid = {
+ #   'learning_rate': [0.1, 0.01, 0.001, 0.0001],
+  #  'num_heads': [2, 4, 6, 8],
+   # 'num_blocks': [6, 12, 24],
+    #'projection_dim': [128, 240, 512],
+    #'batch_size': [3, 6, 10, 18]
+#}
 
+# Define the full path to the model checkpoint file
+checkpoint_path = "model_checkpoint.keras"
 
-model = create_VisionTransformer(1)
-# Compile the model
-model.compile(
-    loss='hinge',
-    optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),  # Adjust learning rate as needed
-    metrics=['accuracy']
-)
-model.summary()
+# Create a ModelCheckpoint callback to save the best model
+checkpoint = ModelCheckpoint(checkpoint_path, monitor='val_loss', save_best_only=True, save_weights_only=True, mode='min', verbose=1)
 
+# Create an EarlyStopping callback to stop training if the validation loss doesn't improve for a certain number of epochs
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
 
-# Train the model
-model.fit(X_train, y_train, epochs=10, batch_size=6)  # Adjust epochs and batch_size as needed
+#model = KerasClassifier(model=create_model(), epochs=100, batch_size=8, validation_split=0.2, callbacks=[checkpoint, early_stopping])
+# Get the list of available parameters
 
-# Evaluate the model on the test data
-test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=1)
+num_folds = 10
+# Loop through the grid search
+best_model = None
+best_accuracy = 0
 
-print("Test accuracy:", test_accuracy)
-print("Test Loss:", test_loss)
+for params in ParameterGrid(param_grid):
+    model = create_model(**params)
+
+    batch_size = params['batch_size']  # Extract batch_size from the params dictionary
+    # Fit the model with checkpoint and early stopping
+    model.fit(X_train, y_train, validation_data=(X_test, y_test), batch_size = batch_size, callbacks=[checkpoint, early_stopping], epochs=100)
+
+    # Evaluate the model on the test set
+    test_accuracy = accuracy_score(y_test, model.predict(X_test).argmax(axis=1))
+
+    if test_accuracy > best_accuracy:
+        best_accuracy = test_accuracy
+        # Save the model to an HDF5 file
+        model.save("best_model.keras")
+        best_params = params
+
+# Load the best model from the checkpoint
+# Load your model with custom layer classes
+best_model = tf.keras.models.load_model('best_model.keras', custom_objects={
+    'PatchExtractor': PatchExtractor,
+    'PatchEncoder': PatchEncoder,
+    'MLP': MLP,
+    'Block': Block,
+    'TransformerEncoder': TransformerEncoder
+})
+
+print("Best Parameters: \n", best_params)
+best_model.summary()
+print("Best test accuracy:", best_accuracy)

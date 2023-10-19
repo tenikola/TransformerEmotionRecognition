@@ -54,20 +54,24 @@ print(X_test.shape)
 
 
 model = create_VisionTransformer(1)
+
 # Compile the model
 model.compile(
     loss=tf.keras.losses.binary_crossentropy,
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),  # Adjust learning rate as needed
-    metrics=['accuracy']
-)
+    metrics=['accuracy', tf.keras.metrics.F1Score(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
+    )
 model.summary()
 
 
 # Train the model
-model.fit(X_train, y_train, epochs=10, batch_size=40)  # Adjust epochs and batch_size as needed
+model.fit(X_train, y_train, epochs=100, batch_size=40)  # Adjust epochs and batch_size as needed
 
 # Evaluate the model on the test data
-test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=1)
+test_loss, test_accuracy, f1, prec, recall = model.evaluate(X_test, y_test, verbose=1)
 
 print("Test accuracy:", test_accuracy)
 print("Test Loss:", test_loss)
+print("Test F1:", f1)
+print("Test precision:", prec)
+print("Test Recall:", recall)
