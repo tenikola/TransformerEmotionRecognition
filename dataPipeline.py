@@ -437,3 +437,105 @@ def loadDataDrive():
         subjects[31] = cPickle.load(f, encoding='latin1')
 
     return subjects
+
+
+def loadDataJupyter():
+    subjects = [dict() for i in range(32)]
+    # Import s01.dat from DEAP
+    with open(r'/home/t/tenikola/data_preprocessed_python/s01.dat', 'rb') as f:
+        subjects[0] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s02.dat', 'rb') as f:
+        subjects[1] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s03.dat', 'rb') as f:
+        subjects[2] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s04.dat', 'rb') as f:
+        subjects[3] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s05.dat', 'rb') as f:
+        subjects[4] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s06.dat', 'rb') as f:
+        subjects[5] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s07.dat', 'rb') as f:
+        subjects[6] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s08.dat', 'rb') as f:
+        subjects[7] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s09.dat', 'rb') as f:
+        subjects[8] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s10.dat', 'rb') as f:
+        subjects[9] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s11.dat', 'rb') as f:
+        subjects[10] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s12.dat', 'rb') as f:
+        subjects[11] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s13.dat', 'rb') as f:
+        subjects[12] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s14.dat', 'rb') as f:
+        subjects[13] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s15.dat', 'rb') as f:
+        subjects[14] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s16.dat', 'rb') as f:
+        subjects[15] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s17.dat', 'rb') as f:
+        subjects[16] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s18.dat', 'rb') as f:
+        subjects[17] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s19.dat', 'rb') as f:
+        subjects[18] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s20.dat', 'rb') as f:
+        subjects[19] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s21.dat', 'rb') as f:
+        subjects[20] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s22.dat', 'rb') as f:
+        subjects[21] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s23.dat', 'rb') as f:
+        subjects[22] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s24.dat', 'rb') as f:
+        subjects[23] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s25.dat', 'rb') as f:
+        subjects[24] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s26.dat', 'rb') as f:
+        subjects[25] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s27.dat', 'rb') as f:
+        subjects[26] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s28.dat', 'rb') as f:
+        subjects[27] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s29.dat', 'rb') as f:
+        subjects[28] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s30.dat', 'rb') as f:
+        subjects[29] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s31.dat', 'rb') as f:
+        subjects[30] = cPickle.load(f, encoding='latin1')
+
+    with open(r'/home/t/tenikola/data_preprocessed_python/s32.dat', 'rb') as f:
+        subjects[31] = cPickle.load(f, encoding='latin1')
+
+    return subjects

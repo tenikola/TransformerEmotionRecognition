@@ -11,11 +11,12 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 
-def create_model(learning_rate=0.001, num_heads=4, num_blocks=6, projection_dim=240, batch_size=6):
+def create_model(learning_rate=0.001, num_heads=4, num_blocks=6, projection_dim=240, batch_size=6, loss=tf.keras.losses.binary_crossentropy, optimizer = tf.keras.optimizers.Adam):
     model = create_VisionTransformer(1, num_heads=num_heads, num_blocks=num_blocks, projection_dim=projection_dim)  # Your model creation function
+    opt = optimizer(learning_rate)
     model.compile(
-        loss=tf.keras.losses.binary_crossentropy,
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001), 
+        loss=loss,
+        optimizer=opt, 
         metrics=['accuracy', tf.keras.metrics.F1Score(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
     )
     
@@ -40,7 +41,7 @@ def dataSubjectPipeline(subject):
     numpy_labels = np.array(labels)
 
     data_tensor = tf.constant(numpy_data, dtype=tf.float32)
-    data_tensor = tf.transpose(data_tensor, [0, 2, 3, 1])
+    data_tensor = tf.transpose(data_tensor, perm=[0, 2, 3, 1])
     labels_tensor = tf.constant(numpy_labels, dtype=tf.float32)
 
     return data_tensor, labels_tensor
@@ -89,6 +90,7 @@ class PatchExtractor(Layer):
             rates=[1, 1, 1, 1],
             padding="VALID",
         )
+        print("these are the patches:: ", patches.shape)
         patch_dims = patches.shape[-1]
         patches = tf.reshape(patches, [batch_size, -1, patch_dims])
         return patches
@@ -198,7 +200,8 @@ def create_VisionTransformer(num_classes, num_heads=4, num_blocks=12, num_patche
     representation = TransformerEncoder(projection_dim = projection_dim, num_heads=num_heads, num_blocks=num_blocks)(patches_embed)
     representation = GlobalAveragePooling1D()(representation)
     # MLP to classify outputs
-    logits = MLP(projection_dim, num_classes, 0.5)(representation)
+    #logits = MLP(projection_dim, num_classes, 0.5)(representation)
+    logits = Dense(num_classes, activation='sigmoid')(representation)
     # Create model
     model = Model(inputs=inputs, outputs=logits)
     return model

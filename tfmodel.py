@@ -21,23 +21,25 @@ data_tensor, labels_tensor = dataSubjectPipeline(subject)
 print(labels_tensor.shape)
 print(data_tensor.shape)
 
-X_train, X_test, y_train, y_test = split_data(data_tensor, labels_tensor, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = split_data(data_tensor, labels_tensor, test_size=0.2, random_state=41)
 print(X_train.shape)
 print(X_test.shape)
 
 param_grid = {
-    'learning_rate': [0.01, 0.001, 0.0001],
-    'num_heads': [2, 4, 6],
+    'learning_rate': [0.001, 0.0001],
+    'num_heads': [4, 8],
     'num_blocks': [6, 12],
-    'projection_dim': [128, 240],
-    'batch_size': [3, 6, 10]
+    'projection_dim': [168, 296],
+    'batch_size': [4, 15],
+    'loss': [tf.keras.losses.binary_crossentropy],
 }
 #param_grid = {
  #   'learning_rate': [0.1, 0.01, 0.001, 0.0001],
   #  'num_heads': [2, 4, 6, 8],
    # 'num_blocks': [6, 12, 24],
     #'projection_dim': [128, 240, 512],
-    #'batch_size': [3, 6, 10, 18]
+    #'batch_size': [3, 6, 10, 18],
+    #'loss': [tf.keras.losses.binary_crossentropy, tf.keras.losses.mse, tf.keras.losses.hinge, tf.keras.losses.binary_focal_crossentropy],
 #}
 
 # Define the full path to the model checkpoint file
